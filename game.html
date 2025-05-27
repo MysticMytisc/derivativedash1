@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>π vs θ - De rivative Dash</title>
+<style>
+  body {
+    margin: 0; font-family: sans-serif; background: #f0f0f0; overflow: hidden; text-align: center;
+  }
+  canvas {
+    background: white; border: 2px solid #222; display: block; margin: 0 auto;
+  }
+  #titleScreen {
+    margin-top: 100px;
+  }
+  #quizBox {
+    position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+    background: white; border: 2px solid #333; padding: 20px; z-index: 10;
+  }
+  #scoreBoard {
+    position: absolute; top: 10px; left: 20px;
+    font-weight: bold; font-size: 18px;
+  }
+  .hidden {
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <div id="titleScreen">
+    <h1>π vs θ - Derivative Dash</h1>
+    <p>Press Space to Start</p>
+  </div>
+
+  <canvas id="gameCanvas" width="800" height="300" class="hidden"></canvas>
+
+  <div id="quizBox" class="hidden">
+    <p id="questionText"></p>
+    <input type="text" id="answerInput" placeholder="Your answer" />
+    <button id="submitBtn">Submit</button>
+  </div>
+
+  <div id="scoreBoard" class="hidden">Score: 0</div>
+
+<script>
+(() => {
+  const derivativeQuestions = [
+    { question: "d/dx of x^2", answer: "2x" },
+    { question: "d/dx of sin(x)", answer: "cos(x)" },
+    { question: "d/dx of cos(x)", answer: "-sin(x)" },
+    { question: "d/dx of e^x", answer: "e^x" },
+    { question: "d/dx of ln(x)", answer: "1/x" },
+    { question: "d/dx of tan(x)", answer: "sec^2(x)" },
+    { question: "d/dx of x^4+12x^3+8x^2+x", answer: "4x^3+36x^2+16x+1" },
+    { question: "d/dx of 5x^5+17x^3+x^2", answer: "25x^4+51x^2+2x" },
+    { question: "d/dx of csc(x)", answer: "-cot(x)csc(x)" },
+    { question: "d/dx of sec(x)", answer: "tan(x)sec(x)" },
+    { question: "d/dx of 4ln(x)", answer: "4/x" },
+    { question: "d/dx of -3x^2-7x", answer: "-6x-7" }
+  ];
+
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const titleScreen = document.getElementById("titleScreen");
+  const scoreBoard = document.getElementById("scoreBoard");
+  const quizBox = document.getElementById("quizBox");
+  const questionText = document.getElementById("questionText");
+  const answerInput = document.getElementById("answerInput");
+  const submitBtn = document.getElementById("submitBtn");
+
+  let gameStarted = false;
+  let gameRunning = false;
+  let frame = 0;
+  let score = 0;
+  let speed = 4;
+  let nextQuestionAt = getRandomFrame();
+
+  const pi = {
+    x: 100,
+    y: 220,
+    width: 30,
+    height: 30,
+    vy: 0,
+    gravity: 1,
+    jumpStrength: 15,
+    isJumping: false
+  };
+
+  let groundOffset = 0;
+  let obstacles = [];
+
+  function startGame() {
+    titleScreen.classList.add("hidden");
+    canvas.classList.remove("hidden");
+    scoreBoard.classList.remove("hidden");
+    gameStarted = true;
+    gameRunning = true;
+    frame = 0;
+    score = 0;
+    speed = 4;
+    obstacles = [];
+    nextQuestionAt = getRandomFrame();
+    requestAnimationFrame(gameLoop);
+  }
+
+  function drawPi() {
+    ctx.font = "30px serif";
+    ctx.fillText("π", pi.x, pi.y + pi.height);
+  }
+
+  function drawObstacles() {
+    ctx.font = "30px serif";
+    obstacles.forEach(ob => {
+      ob.x -= speed;
+      ctx.fillText("θ", ob.x, ob.y + 30);
+    });
+  }
+
+  function spawnObstacle() {
+    if (frame % 90 === 0) {
+      obstacles.push({ x: 800, y: 220, width: 30, height: 30 });
+    }
+  }
+
+  function handleJump() {
+    if (pi.isJumping) {
+      pi.vy -= pi.gravity;
+      pi.y -= pi.vy;
+      if (pi.y >= 220) {
+        pi.y = 220;
+        pi.vy = 0;
+        pi.isJumping = false;
+      }
+    }
+  }
+
+  function drawGround() {
+    ctx.fillStyle = "#ccc";
+    for (let x = -groundOffset; x < canvas.width; x += 40) {
+      ctx.fillRect(x, 250, 20, 5);
+    }
+    groundOffset += speed;
+    if (groundOffset >= 40) groundOffset = 0;
+  }
+
+  function checkCollision() {
+    for (let ob of obstacles) {
+      if (
+        pi.x < ob.x + ob.width &&
+        pi.x + pi.width > ob.x &&
+        pi.y < ob.y + ob.height &&
+        pi.y + pi.height > ob.y
+      ) {
+        alert("Game Over! Final Score: " + score);
+        location.reload();
+      }
+    }
+  }
+
+  function getRandomFrame() {
+    // Next question after 500 to 800 frames
+    return frame + 500 + Math.floor(Math.random() * 300);
+  }
+
+  function showRandomQuestion() {
+    const q = derivativeQuestions[Math.floor(Math.random() * derivativeQuestions.length)];
+    questionText.textContent = q.question;
+    quizBox.dataset.answer = q.answer.toLowerCase();
+    quizBox.classList.remove("hidden");
+    answerInput.value = "";
+    answerInput.focus();
+    gameRunning = false;
+  }
+
+  submitBtn.onclick = () => {
+    const userAnswer = answerInput.value.trim().toLowerCase();
+    const correct = quizBox.dataset.answer;
+    if (userAnswer === correct) {
+      speed += 1;
+      score += 100;
+      quizBox.classList.add("hidden");
+      gameRunning = true;
+      nextQuestionAt = getRandomFrame();
+    } else {
+      alert("Wrong! Game Over.\nFinal Score: " + score);
+      location.reload();
+    }
+  };
+
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space") {
+      if (!gameStarted) {
+        startGame();
+      } else if (gameRunning && !pi.isJumping) {
+        pi.isJumping = true;
+        pi.vy = pi.jumpStrength;
+      }
+    }
+  });
+
+  function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (gameRunning) {
+      frame++;
+      score++;
+      scoreBoard.textContent = "Score: " + score;
+
+      drawGround();
+      drawPi();
+      handleJump();
+      drawObstacles();
+      spawnObstacle();
+      checkCollision();
+
+      // Clean up old obstacles
+      obstacles = obstacles.filter(ob => ob.x + ob.width > 0);
+
+      if (frame >= nextQuestionAt) {
+        showRandomQuestion();
+      }
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+})();
+</script>
+</body>
+</html>
